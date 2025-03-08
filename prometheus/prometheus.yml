@@ -19,7 +19,7 @@ scrape_configs:
   - job_name: 'node_exporter'
     basic_auth:
       username: "prometheus"
-      password: "senha_segura"
+      password: "secret"
     scheme: http
     static_configs:
       - targets: ['servidor1:9100']

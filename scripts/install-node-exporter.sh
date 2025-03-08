@@ -22,8 +22,8 @@ show_help() {
 # Valores padrão
 PORT=9100
 CONTAINER_NAME="node-exporter"
-USERNAME=""
-PASSWORD=""
+USERNAME="prometheus"
+PASSWORD="secret"
 TLS_ENABLED=false
 
 # Processa os argumentos da linha de comando
