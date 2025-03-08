@@ -13,6 +13,8 @@ services:
       - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3000}
       - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
     restart: unless-stopped
+    networks:
+      - monitoring
 
   prometheus:
     image: prom/prometheus:latest
@@ -30,6 +32,8 @@ services:
     restart: unless-stopped
     depends_on:
       - config-generator
+    networks:
+      - monitoring
 
   alertmanager:
     image: prom/alertmanager:latest
@@ -42,6 +46,8 @@ services:
     ports:
       - "${ALERTMANAGER_PORT:-9093}:9093"
     restart: unless-stopped
+    networks:
+      - monitoring
 
   config-generator:
     image: alpine:latest
@@ -80,8 +86,14 @@ services:
       # Configuração do Telegram
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    networks:
+      - monitoring
 
 volumes:
   grafana_data:
   prometheus_data:
   alertmanager_data:
+
+networks:
+  monitoring:
+    driver: bridge
