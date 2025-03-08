@@ -59,13 +59,13 @@ Este repositório contém a configuração completa de um sistema de monitoramen
 Para cada servidor que você deseja monitorar, execute o script de instalação do Node Exporter:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/seu-usuario/server-monitoring/main/scripts/install-node-exporter.sh | bash -s -- -u prometheus -s senha_segura -t
+curl -sSL https://raw.githubusercontent.com/seu-usuario/server-monitoring/main/scripts/install-node-exporter.sh | bash -s -- -u prometheus -s secret -t
 ```
 
 Ou baixe e execute localmente:
 
 ```bash
-./scripts/install-node-exporter.sh -u prometheus -s senha_segura -t
+./scripts/install-node-exporter.sh -u prometheus -s secret -t
 ```
 
 Opções disponíveis:
@@ -120,7 +120,7 @@ ALERT_DISK_THRESHOLD=85    # Limiar de alerta para uso de disco (%)
 #### Configurações de Segurança
 ```
 NODE_EXPORTER_USERNAME=prometheus  # Usuário para autenticação básica
-NODE_EXPORTER_PASSWORD=senha_segura  # Senha para autenticação básica
+NODE_EXPORTER_PASSWORD=secret      # Senha para autenticação básica
 TLS_ENABLED=false                  # Habilita/desabilita TLS
 ```
 
