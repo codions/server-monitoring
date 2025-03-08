@@ -13,6 +13,7 @@ show_help() {
     echo "  -u, --username USUARIO     Define o usuário para autenticação básica"
     echo "  -s, --password SENHA       Define a senha para autenticação básica"
     echo "  -t, --tls                  Habilita TLS para comunicação segura"
+    echo "  -d, --dir DIRETORIO        Define o diretório de configuração (padrão: $HOME/.node-exporter)"
     echo ""
     echo "Exemplo:"
     echo "  $0 -p 9100 -n node-exporter-prod -u prometheus -s secret -t"
@@ -25,6 +26,7 @@ CONTAINER_NAME="node-exporter"
 USERNAME="prometheus"
 PASSWORD="secret"
 TLS_ENABLED=false
+CONFIG_DIR="$HOME/.node-exporter"
 
 # Processa os argumentos da linha de comando
 while [[ $# -gt 0 ]]; do
@@ -52,6 +54,10 @@ while [[ $# -gt 0 ]]; do
             TLS_ENABLED=true
             shift
             ;;
+        -d|--dir)
+            CONFIG_DIR="$2"
+            shift 2
+            ;;
         *)
             echo "Opção inválida: $1"
             show_help
@@ -73,7 +79,7 @@ if docker ps -a | grep -q $CONTAINER_NAME; then
 fi
 
 # Cria diretório para configurações
-mkdir -p /opt/node-exporter/config
+mkdir -p $CONFIG_DIR/config
 
 # Gera arquivo de configuração para autenticação básica
 if [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]; then
@@ -82,7 +88,7 @@ if [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]; then
     HASHED_PASSWORD=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$USERNAME" "$PASSWORD" | cut -d ":" -f 2)
     
     # Cria arquivo de configuração
-    cat > /opt/node-exporter/config/web.yml << EOF
+    cat > $CONFIG_DIR/config/web.yml << EOF
 basic_auth_users:
   $USERNAME: $HASHED_PASSWORD
 EOF
@@ -95,18 +101,18 @@ fi
 if [ "$TLS_ENABLED" = true ]; then
     echo "Configurando TLS..."
     # Gera certificados autoassinados
-    mkdir -p /opt/node-exporter/certs
-    docker run --rm -v /opt/node-exporter/certs:/certs alpine/openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "/CN=node-exporter" -keyout /certs/server.key -out /certs/server.crt
+    mkdir -p $CONFIG_DIR/certs
+    docker run --rm -v $CONFIG_DIR/certs:/certs alpine/openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "/CN=node-exporter" -keyout /certs/server.key -out /certs/server.crt
     
     # Adiciona configuração TLS ao arquivo de configuração
-    if [ -f "/opt/node-exporter/config/web.yml" ]; then
-        cat >> /opt/node-exporter/config/web.yml << EOF
+    if [ -f "$CONFIG_DIR/config/web.yml" ]; then
+        cat >> $CONFIG_DIR/config/web.yml << EOF
 tls_server_config:
   cert_file: /certs/server.crt
   key_file: /certs/server.key
 EOF
     else
-        cat > /opt/node-exporter/config/web.yml << EOF
+        cat > $CONFIG_DIR/config/web.yml << EOF
 tls_server_config:
   cert_file: /certs/server.crt
   key_file: /certs/server.key
@@ -124,8 +130,8 @@ docker run -d \
     --net="host" \
     --pid="host" \
     -v "/:/host:ro,rslave" \
-    -v "/opt/node-exporter/config:/config:ro" \
-    -v "/opt/node-exporter/certs:/certs:ro" \
+    -v "$CONFIG_DIR/config:/config:ro" \
+    -v "$CONFIG_DIR/certs:/certs:ro" \
     prom/node-exporter:latest \
     --path.rootfs=/host \
     --web.listen-address=:$PORT \

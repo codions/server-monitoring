@@ -59,13 +59,21 @@ Este repositório contém a configuração completa de um sistema de monitoramen
 Para cada servidor que você deseja monitorar, execute o script de instalação do Node Exporter:
 
 ```bash
+# Opção 1: Executar com sudo (recomendado para instalação em /opt)
+curl -sSL https://raw.githubusercontent.com/fabioassuncao/server-monitoring/main/scripts/install-node-exporter.sh | sudo bash -s -- -u prometheus -s secret -t
+
+# Opção 2: Executar sem sudo (usa o diretório $HOME/.node-exporter)
 curl -sSL https://raw.githubusercontent.com/fabioassuncao/server-monitoring/main/scripts/install-node-exporter.sh | bash -s -- -u prometheus -s secret -t
 ```
 
 Ou baixe e execute localmente:
 
 ```bash
-./scripts/install-node-exporter.sh -u prometheus -s secret -t
+# Com sudo
+sudo ./scripts/install-node-exporter.sh -u prometheus -s secret -t
+
+# Sem sudo, especificando um diretório personalizado
+./scripts/install-node-exporter.sh -u prometheus -s secret -t -d $HOME/.node-exporter
 ```
 
 Opções disponíveis:
@@ -74,6 +82,7 @@ Opções disponíveis:
 - `-u, --username USUARIO`: Define o usuário para autenticação básica
 - `-s, --password SENHA`: Define a senha para autenticação básica
 - `-t, --tls`: Habilita TLS para comunicação segura
+- `-d, --dir DIRETORIO`: Define o diretório de configuração (padrão: $HOME/.node-exporter)
 
 ### 3. Adicionando Novos Servidores
 
