@@ -33,7 +33,7 @@ Este repositório contém a configuração completa de um sistema de monitoramen
 
 1. Clone este repositório:
    ```bash
-   git clone https://github.com/seu-usuario/server-monitoring.git
+   git clone https://github.com/codions/server-monitoring.git
    cd server-monitoring
    ```
 
@@ -59,7 +59,7 @@ Este repositório contém a configuração completa de um sistema de monitoramen
 Para cada servidor que você deseja monitorar, execute o script de instalação do Node Exporter:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/seu-usuario/server-monitoring/main/scripts/install-node-exporter.sh | bash -s -- -u prometheus -s secret -t
+curl -sSL https://raw.githubusercontent.com/codions/server-monitoring/main/scripts/install-node-exporter.sh | bash -s -- -u prometheus -s secret -t
 ```
 
 Ou baixe e execute localmente:
