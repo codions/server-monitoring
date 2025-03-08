@@ -1,0 +1,22 @@
+# Arquivos de ambiente
+.env
+
+# Arquivos gerados automaticamente
+alertmanager/alertmanager.yml
+prometheus/prometheus.yml
+prometheus/alert.rules.yml
+
+# Diretórios de dados
+data/
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+*.swp
+*~
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db

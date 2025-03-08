@@ -9,7 +9,7 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          # - alertmanager:9093
+          - alertmanager:9093
 
 scrape_configs:
   - job_name: 'prometheus'
@@ -17,7 +17,20 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'node_exporter'
+    basic_auth:
+      username: "prometheus"
+      password: "senha_segura"
+    scheme: http
     static_configs:
-      - targets: ['servidor1:9100']  # Adicione seus servidores aqui
+      - targets: ['servidor1:9100']
         labels:
-          environment: production 
+          environment: production
+      - targets: ['servidor2:9100']
+        labels:
+          environment: production
+      - targets: ['servidor3:9100']
+        labels:
+          environment: production
+      - targets: ['servidor4:9100']
+        labels:
+          environment: production

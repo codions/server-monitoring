@@ -35,4 +35,4 @@ groups:
           severity: critical
         annotations:
           summary: "Instância fora do ar: {{ $labels.instance }}"
-          description: "A instância {{ $labels.instance }} está fora do ar há 5 minutos" 
+          description: "A instância {{ $labels.instance }} está fora do ar há 5 minutos"

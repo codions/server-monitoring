@@ -1,41 +1,88 @@
+
 services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3001:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin  # Altere esta senha em produção
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3000}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
     restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml
+      - ./prometheus:/etc/prometheus
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.enable-lifecycle'
+      - '--web.external-url=${PROMETHEUS_EXTERNAL_URL:-http://localhost:9090}'
+      - '--web.route-prefix=/'
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+    depends_on:
+      - config-generator
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
     restart: unless-stopped
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    restart: unless-stopped
-    network_mode: "host"
-    pid: "host"
+  config-generator:
+    image: alpine:latest
     volumes:
-      - "/:/host:ro,rslave"
-    command:
-      - "--path.rootfs=/host"
-      - "--web.listen-address=:9100"
+      - ./scripts:/scripts
+      - ./prometheus:/etc/prometheus
+      - ./alertmanager:/etc/alertmanager
+    command: sh -c "/scripts/generate-configs.sh"
+    environment:
+      # Configurações gerais
+      - MONITORED_SERVERS=${MONITORED_SERVERS:-servidor1:9100}
+      - ALERT_CPU_THRESHOLD=${ALERT_CPU_THRESHOLD:-80}
+      - ALERT_MEMORY_THRESHOLD=${ALERT_MEMORY_THRESHOLD:-85}
+      - ALERT_DISK_THRESHOLD=${ALERT_DISK_THRESHOLD:-85}
+      
+      # Configurações de segurança
+      - NODE_EXPORTER_USERNAME=${NODE_EXPORTER_USERNAME:-prometheus}
+      - NODE_EXPORTER_PASSWORD=${NODE_EXPORTER_PASSWORD:-secret}
+      - TLS_ENABLED=${TLS_ENABLED:-false}
+      
+      # Canais de notificação
+      - ALERT_CHANNELS=${ALERT_CHANNELS:-email}
+      
+      # Configuração de E-mail
+      - EMAIL_FROM=${EMAIL_FROM:-alertmanager@example.com}
+      - EMAIL_SMARTHOST=${EMAIL_SMARTHOST:-smtp.example.com:587}
+      - EMAIL_AUTH_USERNAME=${EMAIL_AUTH_USERNAME:-alertmanager}
+      - EMAIL_AUTH_PASSWORD=${EMAIL_AUTH_PASSWORD:-password}
+      - EMAIL_RECEIVERS=${EMAIL_RECEIVERS:-admin@example.com}
+      
+      # Configuração do Slack
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - SLACK_CHANNEL=${SLACK_CHANNEL:-#alertas}
+      - SLACK_USERNAME=${SLACK_USERNAME:-AlertManager}
+      
+      # Configuração do Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
 
 volumes:
   grafana_data:
   prometheus_data:
+  alertmanager_data:

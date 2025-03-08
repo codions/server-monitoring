@@ -8,17 +8,23 @@ show_help() {
     echo ""
     echo "Opções:"
     echo "  -h, --help                 Mostra esta mensagem de ajuda"
-    echo "  -p, --port PORTA          Define a porta do Node Exporter (padrão: 9100)"
-    echo "  -n, --name NOME           Define o nome do container (padrão: node-exporter)"
+    echo "  -p, --port PORTA           Define a porta do Node Exporter (padrão: 9100)"
+    echo "  -n, --name NOME            Define o nome do container (padrão: node-exporter)"
+    echo "  -u, --username USUARIO     Define o usuário para autenticação básica"
+    echo "  -s, --password SENHA       Define a senha para autenticação básica"
+    echo "  -t, --tls                  Habilita TLS para comunicação segura"
     echo ""
     echo "Exemplo:"
-    echo "  $0 -p 9100 -n node-exporter-prod"
+    echo "  $0 -p 9100 -n node-exporter-prod -u prometheus -s secret -t"
     exit 0
 }
 
 # Valores padrão
 PORT=9100
 CONTAINER_NAME="node-exporter"
+USERNAME=""
+PASSWORD=""
+TLS_ENABLED=false
 
 # Processa os argumentos da linha de comando
 while [[ $# -gt 0 ]]; do
@@ -33,6 +39,18 @@ while [[ $# -gt 0 ]]; do
         -n|--name)
             CONTAINER_NAME="$2"
             shift 2
+            ;;
+        -u|--username)
+            USERNAME="$2"
+            shift 2
+            ;;
+        -s|--password)
+            PASSWORD="$2"
+            shift 2
+            ;;
+        -t|--tls)
+            TLS_ENABLED=true
+            shift
             ;;
         *)
             echo "Opção inválida: $1"
@@ -54,6 +72,50 @@ if docker ps -a | grep -q $CONTAINER_NAME; then
     docker rm $CONTAINER_NAME
 fi
 
+# Cria diretório para configurações
+mkdir -p /opt/node-exporter/config
+
+# Gera arquivo de configuração para autenticação básica
+if [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]; then
+    echo "Configurando autenticação básica..."
+    # Gera hash da senha
+    HASHED_PASSWORD=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$USERNAME" "$PASSWORD" | cut -d ":" -f 2)
+    
+    # Cria arquivo de configuração
+    cat > /opt/node-exporter/config/web.yml << EOF
+basic_auth_users:
+  $USERNAME: $HASHED_PASSWORD
+EOF
+    AUTH_ARGS="--web.config.file=/config/web.yml"
+else
+    AUTH_ARGS=""
+fi
+
+# Configura TLS se habilitado
+if [ "$TLS_ENABLED" = true ]; then
+    echo "Configurando TLS..."
+    # Gera certificados autoassinados
+    mkdir -p /opt/node-exporter/certs
+    docker run --rm -v /opt/node-exporter/certs:/certs alpine/openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "/CN=node-exporter" -keyout /certs/server.key -out /certs/server.crt
+    
+    # Adiciona configuração TLS ao arquivo de configuração
+    if [ -f "/opt/node-exporter/config/web.yml" ]; then
+        cat >> /opt/node-exporter/config/web.yml << EOF
+tls_server_config:
+  cert_file: /certs/server.crt
+  key_file: /certs/server.key
+EOF
+    else
+        cat > /opt/node-exporter/config/web.yml << EOF
+tls_server_config:
+  cert_file: /certs/server.crt
+  key_file: /certs/server.key
+EOF
+    fi
+    
+    AUTH_ARGS="--web.config.file=/config/web.yml"
+fi
+
 # Inicia o Node Exporter
 echo "Iniciando Node Exporter na porta $PORT..."
 docker run -d \
@@ -62,15 +124,24 @@ docker run -d \
     --net="host" \
     --pid="host" \
     -v "/:/host:ro,rslave" \
+    -v "/opt/node-exporter/config:/config:ro" \
+    -v "/opt/node-exporter/certs:/certs:ro" \
     prom/node-exporter:latest \
     --path.rootfs=/host \
-    --web.listen-address=:$PORT
+    --web.listen-address=:$PORT \
+    $AUTH_ARGS
 
 # Verifica se o container está rodando
 if docker ps | grep -q $CONTAINER_NAME; then
     echo "Node Exporter instalado e rodando com sucesso!"
     echo "Porta: $PORT"
     echo "Nome do container: $CONTAINER_NAME"
+    if [ -n "$USERNAME" ]; then
+        echo "Autenticação básica configurada com usuário: $USERNAME"
+    fi
+    if [ "$TLS_ENABLED" = true ]; then
+        echo "TLS habilitado"
+    fi
 else
     echo "Erro ao iniciar o Node Exporter. Verifique os logs do Docker:"
     docker logs $CONTAINER_NAME
